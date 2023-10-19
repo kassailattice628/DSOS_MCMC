@@ -157,10 +157,10 @@ function Get_VectorSum(ang, peak, ROI)
     i = findall(x-> !isnan.(x), peak[:, ROI]);
 
     # Calculate preferred direction as vector sum.
-    z = sum(peak[i, ROI] .* exp.(im .* ang[i]));
+    z = sum(peak[i, ROI] .* exp.(im .* ang[i])) / sum(peak[i, ROI]);
 
     # Extract DSI, Preferred angle
-    r = abs(z)/length(ang); #DSI
+    r = abs(z); #DSI
     θ = rem2pi(angle(z), RoundDown); #Preferred direction (rad)
     return r, θ, i
 end
@@ -172,9 +172,9 @@ function Get_VectorSum_Orientation(ang, peak, ROI)
     # So, the preferred orientation is used to estimate θ₀.
     
     i = findall(x-> !isnan.(x), peak[:, ROI]);
-    z = sum(peak[i, ROI] .* exp.(im .* 2*ang[i]));
+    z = sum(peak[i, ROI] .* exp.(im .* 2*ang[i])) / sum(peak[i, ROI]);
 
-    r = abs(z)/length(ang); #OSI
+    r = abs(z); #OSI
     θ = rem2pi(angle(z), RoundDown); #Preferred orientation (rad)
     θ = θ/2;
     return r, θ, i
