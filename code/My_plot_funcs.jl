@@ -9,16 +9,22 @@ using StatsPlots
 export Load_MCMC, Plot_MCMC, Check_rhat, Plot_6posteriors
 
 #####
-function Load_MCMC(mouseid, date, n_rec, ROI)
+function Load_MCMC(mouseid, date, n_rec::Int, ROI)    
+    
+    # Data path in jld2 file.
     data_path = "$mouseid/$date/Rec$n_rec/$ROI";
+
+    # Extract data from jld2 file
     jldopen("./result/M$mouseid"*"_MCMC.jld2", "r") do file
         model = file["$data_path/MCMC/model"];
         mean_MCMC = file["$data_path/Plot/MCMC_mean"];
         lower = file["$data_path/Plot/lower"];
         upper = file["$data_path/Plot/upper"];
-        return (model, mean_MCMC, lower, upper)
     end
+
+    return (model, mean_MCMC, lower, upper)
 end
+
 
 function Plot_MCMC(x, y, x_new, y_MCMC, lower, upper, ROI, model)
     # Raw data
@@ -35,6 +41,10 @@ end
 function Plot_6posteriors(s_data, ang, peak, test_ang, startROI)
     plot_list = [];
 
+    mouseid = s_data.mouseid;
+    date = s_data.date;
+    n_rec = s_data.n_rec;
+
     for ROI in startROI:startROI+5
         model, mean_MCMC, lower, upper = Load_MCMC(s_data.mouseid, s_data.date, s_data.n_rec, ROI);
         p = Plot_MCMC(ang, peak, test_ang, 
@@ -43,6 +53,22 @@ function Plot_6posteriors(s_data, ang, peak, test_ang, startROI)
     end
     #plot_list... の意味は
     plot(plot_list..., layout=(3,2), legend=false)
+end
+
+function Compare_plot(s_data, ang1, peak1, ang2, peak2,
+        test_ang, startROI)
+    plot_list = [];
+
+    for ROI in startROI:startROI+2
+        for n_rec in s_data.n_rec
+            model, mean_MCMC, lower, upper = Load_MCMC(s_data.mouseid,
+                s_data.date, n_rec, ROI);
+            p = Plot_MCMC(ang, peak, test_ang,
+                mean_MCMC, lower, upper, ROI, model);
+            push!(plot_list, p)
+        end
+    end
+
 end
 ###################
 function Get_chain(s, ROI)
