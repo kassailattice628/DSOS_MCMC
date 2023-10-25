@@ -5,8 +5,9 @@ using JLD2
 using FileIO
 using HDF5
 using StatsPlots
+using My_MCMC_funcs: Load_Data
 
-export Load_MCMC, Plot_MCMC, Check_rhat, Plot_6posteriors
+export Load_MCMC, Plot_MCMC, Check_rhat, Plot_6posteriors, Compare_plot
 
 #####
 function Load_MCMC(mouseid, date, n_rec::Int, ROI)    
@@ -20,23 +21,27 @@ function Load_MCMC(mouseid, date, n_rec::Int, ROI)
         mean_MCMC = file["$data_path/Plot/MCMC_mean"];
         lower = file["$data_path/Plot/lower"];
         upper = file["$data_path/Plot/upper"];
+        return (model, mean_MCMC, lower, upper)
     end
-
-    return (model, mean_MCMC, lower, upper)
 end
 
 
 function Plot_MCMC(x, y, x_new, y_MCMC, lower, upper, ROI, model)
     # Raw data
     p = scatter(x, y[:,ROI], ms=2);#, label="Data"); 
-    plot!(x_new, y_MCMC, ribbon=(lower, upper));#, label="Estimation");
-    #plot!(legend=:bottomleft)
+
+    # Postetrior
+    plot!(p, x_new, y_MCMC, ribbon=(lower, upper));#, label="Estimation");
+
+    # Add info.
     title!("ROI = $ROI, Model: $model");
     xlabel!("Direction of moving bar");
     ylabel!("z-scored dF/F");
 
     return p
 end
+
+
 
 function Plot_6posteriors(s_data, ang, peak, test_ang, startROI)
     plot_list = [];
@@ -46,28 +51,56 @@ function Plot_6posteriors(s_data, ang, peak, test_ang, startROI)
     n_rec = s_data.n_rec;
 
     for ROI in startROI:startROI+5
-        model, mean_MCMC, lower, upper = Load_MCMC(s_data.mouseid, s_data.date, s_data.n_rec, ROI);
-        p = Plot_MCMC(ang, peak, test_ang, 
-                mean_MCMC, lower, upper, ROI, model)
-        push!(plot_list, p)
+
+        # Load MCMC result
+        model, m, l, u = Load_MCMC(mouseid, date, n_rec, ROI);
+
+        # Raw data
+        p_new = scatter(ang, peak[:,ROI], ms=2);
+        plot!(p_new, test_ang, m, ribbon=(l, u));
+
+        # Add into list
+        push!(plot_list, p_new)
     end
+
     #plot_list... の意味は
     plot(plot_list..., layout=(3,2), legend=false)
 end
 
-function Compare_plot(s_data, ang1, peak1, ang2, peak2,
-        test_ang, startROI)
-    plot_list = [];
 
-    for ROI in startROI:startROI+2
-        for n_rec in s_data.n_rec
-            model, mean_MCMC, lower, upper = Load_MCMC(s_data.mouseid,
-                s_data.date, n_rec, ROI);
-            p = Plot_MCMC(ang, peak, test_ang,
-                mean_MCMC, lower, upper, ROI, model);
-            push!(plot_list, p)
-        end
+function Compare_plot(s1, s2, startROI)
+
+    # Load data
+    ang1, peak1 = Load_Data(s1.mouseid, s1.date, s1.n_rec);
+    ang2, peak2 = Load_Data(s2.mouseid, s2.date, s2.n_rec);
+
+    plot_list = [];
+    test_ang = range(0, 2π, 300);
+
+    for ROI in startROI:startROI+5
+
+        #p_new = plot();
+
+        p_new = Plot_Raw_MCMC(ang1, peak1, s1, ROI, test_ang, [])
+        p_new = Plot_Raw_MCMC(ang2, peak2, s2, ROI, test_ang, p_new)
+
+        push!(plot_list, p_new)
     end
+    plot(plot_list..., layout=(3,2), legend=false)
+end
+
+function Plot_Raw_MCMC(ang, peak, s, ROI, test_ang, p)
+    
+    if isempty(p)
+        # generate empty plot
+        p = plot();
+    end
+    #Load Model
+    model, m, l, u = Load_MCMC(s.mouseid, s.date, s.n_rec, ROI);
+    scatter!(p, ang, peak[:,ROI], ms=2);
+    plot!(p, test_ang, m, ribbon=(l, u));
+    
+    return p
 
 end
 ###################
